@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Converter Pro</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for textareas */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .toast-enter {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        .toast-enter-active {
+            transform: translateY(0);
+            opacity: 1;
+            transition: all 300ms ease-out;
+        }
+        .toast-leave-active {
+            transform: translateY(100%);
+            opacity: 0;
+            transition: all 300ms ease-in;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+                <h1 class="text-xl font-bold tracking-tight text-slate-900">JSON Converter Pro</h1>
+            </div>
+            <div class="text-sm text-slate-500 font-medium">
+                Client-Side Only
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-6">
+        
+        <!-- Left Column: Input -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <div class="flex justify-between items-center mb-2">
+                <label for="input-json" class="block text-sm font-semibold text-slate-700">Input JSON</label>
+                <button id="btn-clear" class="text-xs text-slate-500 hover:text-red-600 font-medium transition-colors">
+                    Clear Input
+                </button>
+            </div>
+            <div class="relative flex-grow flex flex-col">
+                <textarea id="input-json" spellcheck="false" placeholder="Paste your JSON here..." 
+                    class="w-full flex-grow p-4 bg-white border border-slate-300 rounded-xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm resize-none outline-none transition-shadow min-h-[300px]"></textarea>
+                
+                <!-- Error Message Container -->
+                <div id="error-container" class="hidden absolute bottom-4 left-4 right-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm font-medium shadow-sm flex items-start gap-2">
+                    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span id="error-message">Invalid JSON structure.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Column: Controls -->
+        <div class="flex flex-row lg:flex-col justify-center gap-3 py-2 lg:py-10">
+            <button id="btn-beautify" class="flex-1 lg:flex-none group flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-300 rounded-xl shadow-sm hover:border-primary-500 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all font-medium text-slate-700">
+                <svg class="w-5 h-5 text-slate-400 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+                <span class="hidden sm:inline">Beautify</span>
+            </button>
+            
+            <button id="btn-csv" class="flex-1 lg:flex-none group flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white rounded-xl shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all font-medium">
+                <svg class="w-5 h-5 opacity-80 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <span class="hidden sm:inline">To CSV</span>
+            </button>
+            
+            <button id="btn-yaml" class="flex-1 lg:flex-none group flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-xl shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all font-medium">
+                <svg class="w-5 h-5 opacity-80 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                </svg>
+                <span class="hidden sm:inline">To YAML</span>
+            </button>
+        </div>
+
+        <!-- Right Column: Output -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <div class="flex justify-between items-center mb-2">
+                <label for="output-data" class="block text-sm font-semibold text-slate-700">Output Result</label>
+                <span id="output-type-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    Text
+                </span>
+            </div>
+            <div class="relative flex-grow flex flex-col group">
+                <textarea id="output-data" readonly spellcheck="false" placeholder="Converted result will appear here..." 
+                    class="w-full flex-grow p-4 bg-slate-50 border border-slate-300 rounded-xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm resize-none outline-none transition-shadow min-h-[300px]"></textarea>
+                
+                <button id="btn-copy" class="absolute top-3 right-3 flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed z-10" title="Copy to Clipboard" disabled>
+                    <svg id="copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <svg id="check-icon" class="w-4 h-4 text-green-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span id="copy-text" class="text-xs font-semibold">Copy</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 transform translate-y-[150%] opacity-0 transition-all duration-300 z-50">
+        <div class="bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3">
+            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-sm font-medium">Copied to clipboard!</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const inputEl = document.getElementById('input-json');
+            const outputEl = document.getElementById('output-data');
+            const btnBeautify = document.getElementById('btn-beautify');
+            const btnCsv = document.getElementById('btn-csv');
+            const btnYaml = document.getElementById('btn-yaml');
+            const btnClear = document.getElementById('btn-clear');
+            const btnCopy = document.getElementById('btn-copy');
+            const errorContainer = document.getElementById('error-container');
+            const errorMessage = document.getElementById('error-message');
+            const outputBadge = document.getElementById('output-type-badge');
+            const toast = document.getElementById('toast');
+
+            let toastTimeout;
+
+            // Utilities
+            function showError(msg) {
+                errorMessage.textContent = msg;
+                errorContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    errorContainer.classList.add('hidden');
+                }, 4000);
+            }
+
+            function clearError() {
+                errorContainer.classList.add('hidden');
+            }
+
+            function showToast() {
+                clearTimeout(toastTimeout);
+                toast.classList.remove('translate-y-[150%]', 'opacity-0');
+                toastTimeout = setTimeout(() => {
+                    toast.classList.add('translate-y-[150%]', 'opacity-0');
+                }, 3000);
+            }
+
+            function setOutput(content, typeLabel, typeColorClass) {
+                outputEl.value = content;
+                outputBadge.textContent = typeLabel;
+                outputBadge.className = `text-xs font-semibold px-2.5 py-0.5 rounded-full border ${typeColorClass}`;
+                btnCopy.disabled = !content;
+            }
+
+            function getParsedJSON() {
+                const raw = inputEl.value.trim();
+                if (!raw) {
+                    showError("Please enter some JSON first.");
+                    return null;
+                }
+                try {
+                    clearError();
+                    return JSON.parse(raw);
+                } catch (e) {
+                    showError("Invalid JSON: " + e.message);
+                    return null;
+                }
+            }
+
+            // CSV Conversion Logic
+            function convertToCSV(objArray) {
+                // Ensure it's an array
+                const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
+                const data = Array.isArray(array) ? array : [array];
+
+                if (data.length === 0) return '';
+
+                // Extract all unique headers across all objects in the array
+                const headers = Array.from(new Set(data.flatMap(obj => Object.keys(obj))));
+
+                // Build CSV string
+                let csv = '';
+                
+                // 1. Add headers row
+                csv += headers.map(escapeCSVValue).join(',') + '\r\n';
+
+                // 2. Add data rows
+                for (const row of data) {
+                    const rowValues = headers.map(header => {
+                        const val = row[header];
+                        if (val === null || val === undefined) return '';
+                        if (typeof val === 'object') {
+                            // Flatten inner objects/arrays as JSON strings
+                            return JSON.stringify(val);
+                        }
+                        return String(val);
+                    });
+                    csv += rowValues.map(escapeCSVValue).join(',') + '\r\n';
+                }
+
+                return csv;
+            }
+
+            function escapeCSVValue(val) {
+                if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
+                    // Escape double quotes by replacing " with ""
+                    return `"${val.replace(/"/g, '""')}"`;
+                }
+                return val;
+            }
+
+            // Event Listeners
+            btnBeautify.addEventListener('click', () => {
+                const data = getParsedJSON();
+                if (data) {
+                    setOutput(JSON.stringify(data, null, 4), 'JSON', 'bg-blue-50 text-blue-700 border-blue-200');
+                }
+            });
+
+            btnYaml.addEventListener('click', () => {
+                const data = getParsedJSON();
+                if (data) {
+                    try {
+                        const yamlStr = jsyaml.dump(data, {
+                            indent: 2,
+                            lineWidth: -1, // Don't auto-wrap lines
+                            noRefs: true
+                        });
+                        setOutput(yamlStr, 'YAML', 'bg-purple-50 text-purple-700 border-purple-200');
+                    } catch (e) {
+                        showError("YAML Conversion Error: " + e.message);
+                    }
+                }
+            });
+
+            btnCsv.addEventListener('click', () => {
+                const data = getParsedJSON();
+                if (data) {
+                    try {
+                        const csvStr = convertToCSV(data);
+                        setOutput(csvStr, 'CSV', 'bg-emerald-50 text-emerald-700 border-emerald-200');
+                    } catch (e) {
+                        showError("CSV Conversion Error: " + e.message);
+                    }
+                }
+            });
+
+            btnClear.addEventListener('click', () => {
+                inputEl.value = '';
+                outputEl.value = '';
+                clearError();
+                setOutput('', 'Text', 'bg-slate-100 text-slate-600 border-slate-200');
+                inputEl.focus();
+            });
+
+            btnCopy.addEventListener('click', () => {
+                if (!outputEl.value) return;
+
+                // Select the text area contents
+                outputEl.select();
+                outputEl.setSelectionRange(0, 999999); // For mobile devices
+
+                try {
+                    // Using execCommand as requested to bypass iframe restrictions
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        // Visual indication on the button itself
+                        const copyText = document.getElementById('copy-text');
+                        const copyIcon = document.getElementById('copy-icon');
+                        const checkIcon = document.getElementById('check-icon');
+                        
+                        copyText.textContent = 'Copied!';
+                        copyText.classList.add('text-green-600');
+                        copyIcon.classList.add('hidden');
+                        checkIcon.classList.remove('hidden');
+                        btnCopy.classList.add('border-green-300', 'bg-green-50');
+                        
+                        showToast();
+
+                        // Reset button state after 2 seconds
+                        setTimeout(() => {
+                            copyText.textContent = 'Copy';
+                            copyText.classList.remove('text-green-600');
+                            copyIcon.classList.remove('hidden');
+                            checkIcon.classList.add('hidden');
+                            btnCopy.classList.remove('border-green-300', 'bg-green-50');
+                        }, 2000);
+                    } else {
+                        showError("Failed to copy to clipboard.");
+                    }
+                } catch (err) {
+                    showError("Browser does not support clipboard execution.");
+                }
+
+                // Deselect
+                window.getSelection().removeAllRanges();
+            });
+
+            // Initial focus
+            inputEl.focus();
+        });
+    </script>
+</body>
+</html>
